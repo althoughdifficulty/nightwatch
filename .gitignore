@@ -1,0 +1,16 @@
+# ── 运行日志与截图：含本机网络信息（SSID / 内网 IP / 校园门户截图），不入库
+logs/
+
+# ── 开发期一次性实验脚本与抓取结果
+experiments/
+
+# ── 通用忽略
+*.log
+*.tmp
+*.bak
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
