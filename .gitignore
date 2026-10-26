@@ -14,3 +14,6 @@ __pycache__/
 .idea/
 Thumbs.db
 desktop.ini
+
+# ── 开发日记：不公开（含本机排障细节与操作记录），只在本地保留
+DEVLOG.md
