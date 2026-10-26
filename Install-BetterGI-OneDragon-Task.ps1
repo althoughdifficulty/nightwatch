@@ -30,6 +30,7 @@ param(
     [string]$AcceptPrivacyDialog = 'true',
     [string]$StopOnBattery = 'true',
     [int]$SleepDelaySeconds = 60,
+    [switch]$NoNetwork,
     [string]$PortalUrl = '',
     [string]$WifiSsid = '',
     [int]$MaxLatenessMinutes = 120,
@@ -105,6 +106,7 @@ try {
     $plannedHHmm = $Time
 }
 $argStr += (' -PlannedStartTime "' + $plannedHHmm + '" -MaxLatenessMinutes ' + $MaxLatenessMinutes)
+if ($NoNetwork) { $argStr += ' -AutoCampusPortal:$false -WaitNetworkSeconds 0' }
 if ($PortalUrl) { $argStr += (' -PortalUrl "' + $PortalUrl + '"' ) }
 if ($WifiSsid) { $argStr += (' -WifiSsid "' + $WifiSsid + '"' ) }
 if ($OneDragonConfigName) { $argStr += (' -OneDragonConfigName "' + $OneDragonConfigName + '"') }
@@ -201,6 +203,7 @@ Write-Host ('  运行级别     : ' + $task.Principal.RunLevel)
 Write-Host ('  仅接电源运行 : ' + $task.Settings.DisallowStartIfOnBatteries)
 Write-Host ('  拔电即停止   : ' + $task.Settings.StopIfGoingOnBatteries + '   (可用 -StopOnBattery false 关闭)')
 Write-Host ('  迟到容忍     : ' + $MaxLatenessMinutes + ' 分钟（超过就不补跑）')
+Write-Host ('  版本         : ' + $(if ($NoNetwork) { '免联网版（不处理校园网认证，假设网络已就绪）' } else { '联网版（自动完成校园网认证）' }))
 Write-Host ('  登录类型     : ' + $task.Principal.LogonType)
 Write-Host ('  下次运行时间 : ' + $info.NextRunTime)
 
