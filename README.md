@@ -1,4 +1,4 @@
-﻿# 夜巡 NightWatch · BetterGI 一条龙 定时自动运行
+# 夜巡 NightWatch · BetterGI 一条龙 定时自动运行
 
 > 你睡了，它替你守着。
 > 到点自动打开 BetterGI → 切到「一条龙」→ 点蓝色的开始按钮 → 跑完再让电脑睡，并且能从**睡眠**中把电脑唤醒。全程无人值守。
@@ -331,3 +331,56 @@ powercfg /setactive SCHEME_CURRENT
 - 本方案依赖 **BetterGI 的界面文案**（`一条龙`、`任务列表`）。如果以后 BetterGI 改版换了文案/布局，需要调整脚本里的锚点（都集中在第 3、5 步，注释写清楚了）。
 - 我在开发环境里**无法直接驱动你的 BetterGI**：它以管理员权限运行，而我的进程只有普通权限，读不到它的控件，也无法注入点击（实测 UI 树子元素为 0）。所以点击逻辑我是用**一个结构相同的 WPF 假界面做了端到端实测**（预热点击 → 导航点击 → 页面切换 → 定位播放按钮 → 点击 → 日志校验，全部通过），真实 BetterGI 上请先 `-DryRun` 确认坐标，再真实跑一次。
 - 如果首次真实运行失败，`logs\` 里的截图 + `uia-*.txt` 足够我定位并修正锚点。
+
+---
+
+## 十一、分享给别人用（适配你自己的学校）
+
+默认参数是**陕西师范大学**的（SSID `SNNU`、门户 `http://202.117.144.205:8601/snnuportal/login.jsp`）。
+换成别的学校/单位，只需改两处参数，**不需要改代码**：
+
+```powershell
+# 单独跑认证时
+.\Connect-CampusNetwork.ps1 -PortalUrl "http://你的门户地址/login.jsp" -WifiSsid "你的WiFi名"
+
+# 长期使用：改任务参数
+.\Install-BetterGI-OneDragon-Task.ps1 -Time 06:00 -PortalUrl "http://你的门户/..." -WifiSsid "你的WiFi名"
+```
+
+### 点击位置是怎么找到的
+
+早期版本用"窗口比例坐标"，实测**不可靠**（页面排版一变就偏 300px）。
+现在优先用 **UI Automation 读控件的真实矩形**：
+
+| 目标 | 定位方式 |
+|---|---|
+| 账号 / 密码 | `Edit` 控件（读它的值判断是否已自动填充） |
+| 联通 / 移动 | `RadioButton` + 名字正则（如 `联\s*通`） |
+| 登录按钮 | 表单区下方尺寸最大的 `Hyperlink` / `Image` |
+| 比例坐标 | 仅作兜底，元素找不到时才用 |
+
+所以**换成别的门户时，最可能需要调的是"怎么认出登录按钮"**——如果新门户的按钮不在预期位置，
+改 `Find-LoginButtonRect` 的筛选条件即可（有注释）。
+
+### 隐私
+
+- 本工具**不保存任何账号密码**：它依赖浏览器自己记住的密码（`记住密码` 勾选 + Edge 自动填充）。
+- `logs\` 里的日志和截图**含 SSID、内网 IP、门户截图**，已在 `.gitignore` 中排除，请勿提交。
+- 脚本本身不含学号、密码、MAC 等个人信息。
+
+### 免责声明
+
+- 自动化操作校园网认证、自动化操作游戏，**可能违反学校网络使用规定或游戏服务条款**，
+  账号风险（封禁、处罚）由使用者自行承担。
+- 本工具仅做"把鼠标点在该点的地方"，不破解、不绕过任何认证机制。
+
+### 发布到 GitHub
+
+```powershell
+cd <项目目录>
+git remote add origin git@github.com:<你的用户名>/nightwatch.git
+git push -u origin main
+git tag -a v1.0.0 -m "NightWatch v1.0.0" ; git push origin v1.0.0
+```
+
+建议在仓库设置里加 topics：`bettergi` `genshin-impact` `powershell` `windows-automation` `task-scheduler` `ui-automation`

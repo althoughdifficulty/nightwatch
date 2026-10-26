@@ -51,6 +51,8 @@ param(
     [int]$PortalRetries = 5,
     [int]$PortalRetryDelaySeconds = 60,
     [switch]$AbortIfNoNetwork = $true,
+    [string]$PortalUrl = 'http://202.117.144.205:8601/snnuportal/login.jsp',
+    [string]$WifiSsid = 'SNNU',
     [string]$PlannedStartTime = '06:00',
     [int]$MaxLatenessMinutes = 120,
     [switch]$RequireACPower = $true,
@@ -155,9 +157,16 @@ function Test-NetworkUp {
 
 function Test-PortalReachable {
     # 门户可达 = WiFi 已连上、只差认证
+    # 主机/端口从 $PortalUrl 解析（换学校只需改 -PortalUrl，不用改代码）
+    $h = '202.117.144.205'; $pt = 8601
+    try {
+        $u = [System.Uri]$PortalUrl
+        if ($u.Host) { $h = $u.Host }
+        if ($u.Port -gt 0) { $pt = $u.Port }
+    } catch { }
     try {
         $c = New-Object System.Net.Sockets.TcpClient
-        $ar = $c.BeginConnect('202.117.144.205', 8601, $null, $null)
+        $ar = $c.BeginConnect($h, $pt, $null, $null)
         if ($ar.AsyncWaitHandle.WaitOne(2000)) { $c.EndConnect($ar); $c.Close(); return $true }
         $c.Close()
         return $false
@@ -172,7 +181,10 @@ function Invoke-CampusPortalAuth {
     for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
         Log ("校园网认证：第 " + $attempt + "/" + $MaxAttempts + " 次尝试")
         try {
-            $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $portalScript -Force -CloseBrowserAll 2>&1
+            $portalArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $portalScript, '-Force', '-CloseBrowserAll')
+            if ($PortalUrl) { $portalArgs += @('-PortalUrl', $PortalUrl) }
+            if ($WifiSsid) { $portalArgs += @('-WifiSsid', $WifiSsid) }
+            $out = & powershell.exe @portalArgs 2>&1
             foreach ($pl in @($out)) { Log ("  [portal] " + $pl) }
         } catch { Log ("Portal 认证脚本异常: " + $_.Exception.Message) "WRN" }
         Start-Sleep -Seconds 2

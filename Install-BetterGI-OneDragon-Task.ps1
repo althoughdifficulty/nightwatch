@@ -30,6 +30,8 @@ param(
     [string]$AcceptPrivacyDialog = 'true',
     [string]$StopOnBattery = 'true',
     [int]$SleepDelaySeconds = 60,
+    [string]$PortalUrl = '',
+    [string]$WifiSsid = '',
     [int]$MaxLatenessMinutes = 120,
     [switch]$RunNow,
     [switch]$RunDryRun
@@ -103,6 +105,8 @@ try {
     $plannedHHmm = $Time
 }
 $argStr += (' -PlannedStartTime "' + $plannedHHmm + '" -MaxLatenessMinutes ' + $MaxLatenessMinutes)
+if ($PortalUrl) { $argStr += (' -PortalUrl "' + $PortalUrl + '"' ) }
+if ($WifiSsid) { $argStr += (' -WifiSsid "' + $WifiSsid + '"' ) }
 if ($OneDragonConfigName) { $argStr += (' -OneDragonConfigName "' + $OneDragonConfigName + '"') }
 
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $argStr -WorkingDirectory $scriptDir
