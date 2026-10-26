@@ -11,10 +11,17 @@
 [CmdletBinding()]
 param(
     [ValidateSet('menu', 'normal', 'force', 'dry', 'status', 'rehearsal')]
-    [string]$Mode = 'menu'
+    [string]$Mode = 'menu',
+    [string]$PortalUrl = 'http://<门户主机>:<端口>/<门户路径>/login.jsp',
+    [string]$WifiSsid = '<你的WiFi名称>'
 )
 
 $ErrorActionPreference = 'Continue'
+
+# 从 -PortalUrl 派生出主机、端口、登出地址（不写死任何学校地址）
+try { $pu = [Uri]$PortalUrl; $portalHost = $pu.Host; $portalPort = $pu.Port } catch { $portalHost = ""; $portalPort = 0 }
+if (-not $portalHost) { $portalHost = "<门户主机>"; $portalPort = 0 }
+$logoffUrl = ($PortalUrl -replace '[^/]*$', 'logoff')
 
 # 自动提权：凌晨的计划任务是管理员跑的，手动测试也要一样，
 # 否则 Enable-NetAdapter / Disable-NetAdapter 这类操作会 Access denied。
@@ -87,7 +94,7 @@ function Show-State {
     if (-not $ip) { $ip = '(无)' }
 
     $inet = Test-InternetHttps
-    $portalOk = Test-Tcp -HostName '202.117.144.205' -Port 8601 -TimeoutMs 2500
+    $portalOk = Test-Tcp -HostName $portalHost -Port $portalPort -TimeoutMs 2500
     $edge = @(Get-Process msedge -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 })
 
     Write-Host ('  WiFi SSID    : ' + $ssid)
@@ -115,7 +122,7 @@ function Invoke-PortalTest {
     Write-Head '开始执行（下面每一行都是脚本的输出）'
     Write-Host ''
     # 注意：必须显式 Write-Host，否则子进程输出会当成函数返回值被调用方丢弃（踩过）
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $portal @ArgList | ForEach-Object { Write-Host ('  ' + $_) }
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $portal -PortalUrl $PortalUrl -WifiSsid $WifiSsid @ArgList | ForEach-Object { Write-Host ('  ' + $_) }
     $code = $LASTEXITCODE
     Write-Host ''
     Write-Head ('执行结束，退出码 = ' + $code)
@@ -171,7 +178,7 @@ while ($true) {
             Write-Host '  全程本地执行，断网不影响脚本本身。' -ForegroundColor Gray
             $curl = Join-Path $env:SystemRoot 'System32\curl.exe'
             if (-not (Test-Path $curl)) { $curl = 'curl.exe' }
-            & $curl -s -o NUL --max-time 10 'http://202.117.144.205:8601/snnuportal/logoff' 2>&1 | Out-Null
+            & $curl -s -o NUL --max-time 10 $logoffUrl 2>&1 | Out-Null
             Start-Sleep -Seconds 5
             $after = (& $curl -s -o NUL -w '%{http_code}' --max-time 8 'https://www.baidu.com' 2>$null | Out-String).Trim()
             Write-Host ('  登出后 baidu HTTPS = ' + $after + '   （000/空 = 已断开，符合预期）') -ForegroundColor Gray
@@ -193,7 +200,7 @@ if ($Mode -ne 'menu') {
         'dry' { [void](Invoke-PortalTest -ArgList @('-Force', '-DryRun')) ; $null = Read-Host '  按回车退出' }
         'rehearsal' {
             $curl = Join-Path $env:SystemRoot 'System32\curl.exe'
-            & $curl -s -o NUL --max-time 10 'http://202.117.144.205:8601/snnuportal/logoff' 2>&1 | Out-Null
+            & $curl -s -o NUL --max-time 10 $logoffUrl 2>&1 | Out-Null
             Start-Sleep -Seconds 5
             [void](Invoke-PortalTest -ArgList @('-Force'))
             $null = Read-Host '  按回车退出'

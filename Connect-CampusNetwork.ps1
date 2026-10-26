@@ -1,4 +1,4 @@
-﻿# 校园网 Portal 自动认证（陕西师范大学）
+﻿# 校园网 Portal 自动认证（通用版：门户地址与 SSID 通过参数传入）
 #
 # 设计原则：
 #   1) 先用 TCP 探测判断"到底能不能上网"。能上就直接跳过，什么都不动。
@@ -9,8 +9,8 @@
 #   4) -DryRun 只算不点，并把点击位置画到截图上，便于人工复核。
 [CmdletBinding()]
 param(
-    [string]$PortalUrl = 'http://202.117.144.205:8601/snnuportal/login.jsp',
-    [string]$WifiSsid = 'SNNU',
+    [string]$PortalUrl = 'http://<门户主机>:<端口>/<门户路径>/login.jsp',
+    [string]$WifiSsid = '<你的WiFi名称>',
     [int]$WifiConnectTimeoutSeconds = 90,
     [int]$LoadTimeoutSeconds = 30,
     [int]$VerifySeconds = 90,
@@ -37,7 +37,7 @@ $RATIO = @{
 
 function Get-CurrentSsid {
     # 必须解析 SSID 本身。注意：不能用 Get-NetConnectionProfile.Name —— 那是"网络配置文件名称"，
-    # 可能叫 "SNNU 3" 之类，和真实 SSID 不一致（踩过，会误判成"没连上"）。
+    # 可能叫 "你的WiFi名 2"、"你的WiFi名 3" 之类，和真实 SSID 不一致（踩过，会误判成"没连上"）。
     # netsh 的中文输出是 UTF-8，而 PowerShell 5.1 默认按 GBK 解码 → 乱码，所以这里临时切 UTF-8。
     $oldEnc = $null
     $out = @()
@@ -471,7 +471,7 @@ function Find-PortalWindow {
         $r = Get-EdgeRoot -Win $w
         if (-not $r) { continue }
         if (-not (Find-ByName -Root $r -Patterns @('地址和搜索栏') -Types @('Edit'))) { continue }
-        $tab = Find-ByName -Root $r -Patterns @('陕西师范大学|网络Portal|snnuportal') -Types @('TabItem')
+    $tab = Find-ByName -Root $r -Patterns @('网络Portal|Portal|portal|login') -Types @('TabItem')
         if ($tab) { return @{ Win = $w; Root = $r; Tab = $tab } }
     }
     return $null
@@ -564,9 +564,12 @@ for ($i = 0; $i -lt 10; $i++) {
 }
 if (-not $root) { Log '拿到了窗口句柄，但读不到 UI Automation 根元素' 'ERR'; exit 1 }
 
+# 用 PortalUrl 的主机名来判断"是不是门户页"，不写死具体学校的路径
+try { $portalHostPattern = [regex]::Escape(([Uri]$PortalUrl).Host) } catch { $portalHostPattern = "portal" }
+
 # 校验地址栏：如果当前页不是门户（常见：停在 about:blank），主动导航过去
 $urlNow = Get-AddressBarValue -Root $root
-if ($urlNow -notmatch 'snnuportal') {
+if ($urlNow -notmatch $portalHostPattern) {
     Log ('当前页面不是门户（地址栏: "' + $urlNow + '"），主动导航') 'WRN'
     [void](Navigate-Edge -Root $root -Url $PortalUrl)
     Start-Sleep -Seconds 5

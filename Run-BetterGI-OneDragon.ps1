@@ -51,8 +51,8 @@ param(
     [int]$PortalRetries = 5,
     [int]$PortalRetryDelaySeconds = 60,
     [switch]$AbortIfNoNetwork = $true,
-    [string]$PortalUrl = 'http://202.117.144.205:8601/snnuportal/login.jsp',
-    [string]$WifiSsid = 'SNNU',
+    [string]$PortalUrl = 'http://<门户主机>:<端口>/<门户路径>/login.jsp',
+    [string]$WifiSsid = '<你的WiFi名称>',
     [string]$PlannedStartTime = '06:00',
     [int]$MaxLatenessMinutes = 120,
     [switch]$RequireACPower = $true,
@@ -158,11 +158,12 @@ function Test-NetworkUp {
 function Test-PortalReachable {
     # 门户可达 = WiFi 已连上、只差认证
     # 主机/端口从 $PortalUrl 解析（换学校只需改 -PortalUrl，不用改代码）
-    $h = '202.117.144.205'; $pt = 8601
+    $h = $null; $pt = 0
     try {
         $u = [System.Uri]$PortalUrl
         if ($u.Host) { $h = $u.Host }
         if ($u.Port -gt 0) { $pt = $u.Port }
+        if (-not $h -or $pt -le 0) { Log '（提示）-PortalUrl 还没配置成你自己的门户地址，无法判断门户可达性' 'WRN'; return $false }
     } catch { }
     try {
         $c = New-Object System.Net.Sockets.TcpClient
